@@ -2,6 +2,12 @@ import bcrypt from "bcryptjs";
 import pool from "./pool.js";
 import { USER_ROLES } from "../config/constants.js";
 
+function getDateOffset(offset) {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(date);
+}
+
 const demoUsers = [
   {
     fullName: "Admin Demo",
@@ -120,14 +126,17 @@ async function seedOfferings() {
     {
       hospitalName: "City Care Hospital",
       vaccineName: "Covaxin",
+      priceInr: 850,
     },
     {
       hospitalName: "City Care Hospital",
       vaccineName: "Covishield",
+      priceInr: 720,
     },
     {
       hospitalName: "Green Valley Medical Center",
       vaccineName: "Covishield",
+      priceInr: 690,
     },
   ];
 
@@ -141,16 +150,80 @@ async function seedOfferings() {
 
     await pool.query(
       `
-        INSERT INTO hospital_vaccines (hospital_id, vaccine_id, is_active)
-        VALUES ($1, $2, TRUE)
+        INSERT INTO hospital_vaccines (hospital_id, vaccine_id, is_active, price_inr)
+        VALUES ($1, $2, TRUE, $3)
         ON CONFLICT (hospital_id, vaccine_id)
         DO UPDATE
         SET
           is_active = TRUE,
+          price_inr = EXCLUDED.price_inr,
           updated_at = NOW()
       `,
-      [hospitalId, vaccineId]
+      [hospitalId, vaccineId, offering.priceInr]
     );
+  }
+}
+
+async function seedTimeSlots() {
+  const offeringsResult = await pool.query(
+    `
+      SELECT
+        hv.id,
+        h.name AS hospital_name,
+        v.name AS vaccine_name
+      FROM hospital_vaccines hv
+      INNER JOIN hospitals h ON h.id = hv.hospital_id
+      INNER JOIN vaccines v ON v.id = hv.vaccine_id
+      WHERE (h.name, v.name) IN (
+        ('City Care Hospital', 'Covaxin'),
+        ('City Care Hospital', 'Covishield'),
+        ('Green Valley Medical Center', 'Covishield')
+      )
+    `
+  );
+
+  const offeringByKey = new Map(
+    offeringsResult.rows.map((row) => [`${row.hospital_name}::${row.vaccine_name}`, row.id])
+  );
+
+  const slotTemplates = [
+    { startTime: "09:00", endTime: "09:30", capacity: 12 },
+    { startTime: "10:00", endTime: "10:30", capacity: 12 },
+    { startTime: "11:30", endTime: "12:00", capacity: 10 },
+    { startTime: "15:00", endTime: "15:30", capacity: 8 },
+  ];
+
+  const offerings = [
+    "City Care Hospital::Covaxin",
+    "City Care Hospital::Covishield",
+    "Green Valley Medical Center::Covishield",
+  ];
+
+  for (const offeringKey of offerings) {
+    const offeringId = offeringByKey.get(offeringKey);
+
+    if (!offeringId) {
+      continue;
+    }
+
+    for (const dayOffset of [0, 1, 2, 3]) {
+      const slotDate = getDateOffset(dayOffset);
+
+      for (const slot of slotTemplates) {
+        await pool.query(
+          `
+            INSERT INTO time_slots (hospital_vaccine_id, slot_date, start_time, end_time, capacity)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (hospital_vaccine_id, slot_date, start_time, end_time)
+            DO UPDATE
+            SET
+              capacity = GREATEST(EXCLUDED.capacity, time_slots.booked_count),
+              updated_at = NOW()
+          `,
+          [offeringId, slotDate, slot.startTime, slot.endTime, slot.capacity]
+        );
+      }
+    }
   }
 }
 
@@ -159,6 +232,7 @@ Promise.resolve()
   .then(seedVaccines)
   .then(seedHospitals)
   .then(seedOfferings)
+  .then(seedTimeSlots)
   .then(async () => {
     console.log("Seed data is ready.");
     await pool.end();

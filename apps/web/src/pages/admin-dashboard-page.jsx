@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { Building2, ClipboardList, Plus, RefreshCcw, ShieldCheck, Syringe } from "lucide-react";
+import {
+  Building2,
+  CalendarClock,
+  ClipboardList,
+  IndianRupee,
+  Plus,
+  RefreshCcw,
+  ShieldCheck,
+  Syringe,
+} from "lucide-react";
 import AppShell from "@/components/app-shell.jsx";
 import { Alert } from "@/components/ui/alert.jsx";
 import { Badge } from "@/components/ui/badge.jsx";
@@ -9,7 +18,14 @@ import { Input } from "@/components/ui/input.jsx";
 import { Label } from "@/components/ui/label.jsx";
 import { Select } from "@/components/ui/select.jsx";
 import { useAuth } from "@/context/auth-context.jsx";
+import {
+  formatCurrencyInr,
+  formatDateLabel,
+  formatTimeLabel,
+  getTodayDateInputValue,
+} from "@/lib/utils.js";
 import * as catalogService from "@/services/catalog-service.js";
+import * as schedulingService from "@/services/scheduling-service.js";
 
 const initialHospitalForm = {
   name: "",
@@ -28,6 +44,14 @@ const initialOfferingForm = {
   hospitalId: "",
   vaccineId: "",
   isActive: true,
+};
+
+const initialSlotForm = {
+  offeringId: "",
+  date: getTodayDateInputValue(),
+  startTime: "09:00",
+  endTime: "09:30",
+  capacity: 10,
 };
 
 function StatCard({ icon: Icon, label, value }) {
@@ -55,36 +79,81 @@ export default function AdminDashboardPage() {
     vaccines: [],
     counts: { hospitals: 0, vaccines: 0, offerings: 0 },
   });
+  const [slots, setSlots] = useState([]);
+  const [adminBookings, setAdminBookings] = useState({ date: getTodayDateInputValue(), bookings: [] });
   const [hospitalForm, setHospitalForm] = useState(initialHospitalForm);
   const [vaccineForm, setVaccineForm] = useState(initialVaccineForm);
   const [offeringForm, setOfferingForm] = useState(initialOfferingForm);
+  const [slotForm, setSlotForm] = useState(initialSlotForm);
+  const [slotEditId, setSlotEditId] = useState("");
   const [editingHospitalId, setEditingHospitalId] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [priceDrafts, setPriceDrafts] = useState({});
+  const [operationalFilters, setOperationalFilters] = useState({
+    date: getTodayDateInputValue(),
+    hospitalId: "",
+    vaccineId: "",
+  });
+  const [isMasterLoading, setIsMasterLoading] = useState(true);
+  const [isOperationsLoading, setIsOperationsLoading] = useState(true);
   const [actionState, setActionState] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
   const hospitals = masterData.hospitals || [];
   const vaccines = masterData.vaccines || [];
-
-  const offeringReady = useMemo(
-    () => hospitals.length > 0 && vaccines.length > 0,
-    [hospitals.length, vaccines.length]
+  const offerings = useMemo(
+    () =>
+      hospitals.flatMap((hospital) =>
+        hospital.offerings.map((offering) => ({
+          ...offering,
+          hospital,
+        }))
+      ),
+    [hospitals]
   );
 
   async function loadMasterData({ silent = false } = {}) {
     if (!silent) {
-      setIsLoading(true);
+      setIsMasterLoading(true);
     }
 
     try {
       const data = await catalogService.getAdminMasterData(token);
       setMasterData(data);
+      setPriceDrafts(
+        Object.fromEntries(
+          data.hospitals.flatMap((hospital) =>
+            hospital.offerings.map((offering) => [offering.id, offering.priceInr ?? 0])
+          )
+        )
+      );
     } catch (error) {
       setErrorMessage(error.message);
     } finally {
       if (!silent) {
-        setIsLoading(false);
+        setIsMasterLoading(false);
+      }
+    }
+  }
+
+  async function loadOperationalData({ silent = false } = {}) {
+    if (!silent) {
+      setIsOperationsLoading(true);
+    }
+
+    try {
+      const [slotData, bookingData] = await Promise.all([
+        schedulingService.listAdminSlots(token, operationalFilters),
+        schedulingService.listAdminBookings(token, operationalFilters),
+      ]);
+
+      setSlots(slotData);
+      setAdminBookings(bookingData);
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      if (!silent) {
+        setIsOperationsLoading(false);
       }
     }
   }
@@ -92,6 +161,10 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     loadMasterData();
   }, []);
+
+  useEffect(() => {
+    loadOperationalData();
+  }, [operationalFilters.date, operationalFilters.hospitalId, operationalFilters.vaccineId]);
 
   function clearMessages() {
     setErrorMessage("");
@@ -116,7 +189,17 @@ export default function AdminDashboardPage() {
     }));
   }
 
-  function beginHospitalEdit(hospital) {
+  function updateSlotField(event) {
+    const { name, value } = event.target;
+    setSlotForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function updateOperationalFilter(event) {
+    const { name, value } = event.target;
+    setOperationalFilters((current) => ({ ...current, [name]: value }));
+  }
+
+  function startHospitalEdit(hospital) {
     clearMessages();
     setEditingHospitalId(hospital.id);
     setHospitalForm({
@@ -130,6 +213,23 @@ export default function AdminDashboardPage() {
   function cancelHospitalEdit() {
     setEditingHospitalId("");
     setHospitalForm(initialHospitalForm);
+  }
+
+  function startSlotEdit(slot) {
+    clearMessages();
+    setSlotEditId(slot.id);
+    setSlotForm({
+      offeringId: slot.offeringId,
+      date: slot.date,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+      capacity: slot.capacity,
+    });
+  }
+
+  function cancelSlotEdit() {
+    setSlotEditId("");
+    setSlotForm(initialSlotForm);
   }
 
   async function handleHospitalSubmit(event) {
@@ -166,7 +266,7 @@ export default function AdminDashboardPage() {
         dosesRequired: Number(vaccineForm.dosesRequired || 1),
       });
       setVaccineForm(initialVaccineForm);
-      setSuccessMessage("Vaccine added to the catalog.");
+      setSuccessMessage("Vaccine added.");
       await loadMasterData({ silent: true });
     } catch (error) {
       setErrorMessage(error.message);
@@ -182,8 +282,25 @@ export default function AdminDashboardPage() {
 
     try {
       await catalogService.createOffering(token, offeringForm);
-      setOfferingForm((current) => ({ ...initialOfferingForm, isActive: current.isActive }));
-      setSuccessMessage("Hospital offering saved.");
+      setOfferingForm(initialOfferingForm);
+      setSuccessMessage("Offering saved.");
+      await loadMasterData({ silent: true });
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setActionState("");
+    }
+  }
+
+  async function handlePriceSave(offeringId) {
+    clearMessages();
+    setActionState(`price-${offeringId}`);
+
+    try {
+      await catalogService.updateOfferingPrice(token, offeringId, {
+        priceInr: Number(priceDrafts[offeringId] || 0),
+      });
+      setSuccessMessage("Price updated.");
       await loadMasterData({ silent: true });
     } catch (error) {
       setErrorMessage(error.message);
@@ -207,65 +324,92 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function handleSlotSubmit(event) {
+    event.preventDefault();
+    clearMessages();
+    setActionState("slot");
+
+    try {
+      const payload = {
+        ...slotForm,
+        capacity: Number(slotForm.capacity || 0),
+      };
+
+      if (slotEditId) {
+        await schedulingService.updateSlot(token, slotEditId, payload);
+        setSuccessMessage("Time slot updated.");
+      } else {
+        await schedulingService.createSlot(token, payload);
+        setSuccessMessage("Time slot created.");
+      }
+
+      cancelSlotEdit();
+      await loadOperationalData({ silent: true });
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setActionState("");
+    }
+  }
+
   return (
     <AppShell
       title="Admin Dashboard"
-      description="This phase turns the admin surface into a real master-data workspace. Hospitals, vaccine catalog entries, and hospital offerings are now managed from one screen."
+      description="The app is now in an operational state: admins can manage hospitals, vaccines, offerings, prices, slots, and see day-wise bookings from one place."
     >
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <StatCard icon={Building2} label="Hospitals" value={masterData.counts.hospitals} />
         <StatCard icon={Syringe} label="Vaccines" value={masterData.counts.vaccines} />
-        <StatCard icon={ClipboardList} label="Offerings" value={masterData.counts.offerings} />
+        <StatCard icon={IndianRupee} label="Offerings" value={masterData.counts.offerings} />
+        <StatCard icon={CalendarClock} label="Slots" value={slots.length} />
+        <StatCard icon={ClipboardList} label="Bookings" value={adminBookings.bookings.length} />
+        <StatCard
+          icon={ShieldCheck}
+          label="Booked Today"
+          value={adminBookings.bookings.filter((booking) => booking.status === "booked").length}
+        />
       </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Badge>Master data phase</Badge>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Admins can now create hospitals, define vaccines, and connect vaccine offerings to
-            hospitals before pricing and time-slot management land.
+          <Badge>Final admin scope</Badge>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Master data, pricing, capacity planning, and daily booking visibility are now handled
+            from this screen.
           </p>
         </div>
-        <Button onClick={() => loadMasterData()} variant="outline">
-          <RefreshCcw className="mr-2 h-4 w-4" />
-          Refresh
-        </Button>
+        <div className="flex gap-3">
+          <Button onClick={() => loadMasterData()} variant="outline">
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Refresh master data
+          </Button>
+          <Button onClick={() => loadOperationalData()} variant="outline">
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Refresh operations
+          </Button>
+        </div>
       </div>
 
       {errorMessage ? <Alert className="mt-4" variant="destructive">{errorMessage}</Alert> : null}
       {successMessage ? <Alert className="mt-4">{successMessage}</Alert> : null}
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_1.1fr]">
         <div className="space-y-6">
           <Card>
             <CardHeader>
               <Badge>{editingHospitalId ? "Edit hospital" : "Create hospital"}</Badge>
-              <CardTitle>{editingHospitalId ? "Update hospital details" : "Add a new hospital"}</CardTitle>
-              <CardDescription>
-                Keep hospital data clean now so search and booking flows do not need to rewrite it later.
-              </CardDescription>
+              <CardTitle>{editingHospitalId ? "Update hospital" : "Add hospital"}</CardTitle>
+              <CardDescription>Hospitals are the base layer for all patient discovery and slot setup.</CardDescription>
             </CardHeader>
             <CardContent>
               <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleHospitalSubmit}>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="hospital-name">Hospital name</Label>
-                  <Input
-                    id="hospital-name"
-                    name="name"
-                    onChange={updateHospitalField}
-                    placeholder="Apollo Hospital"
-                    value={hospitalForm.name}
-                  />
+                  <Input id="hospital-name" name="name" onChange={updateHospitalField} value={hospitalForm.name} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="hospital-city">City</Label>
-                  <Input
-                    id="hospital-city"
-                    name="city"
-                    onChange={updateHospitalField}
-                    placeholder="Bengaluru"
-                    value={hospitalForm.city}
-                  />
+                  <Input id="hospital-city" name="city" onChange={updateHospitalField} value={hospitalForm.city} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="hospital-pincode">Pincode</Label>
@@ -274,19 +418,12 @@ export default function AdminDashboardPage() {
                     maxLength={6}
                     name="pincode"
                     onChange={updateHospitalField}
-                    placeholder="560001"
                     value={hospitalForm.pincode}
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="hospital-address">Address</Label>
-                  <Input
-                    id="hospital-address"
-                    name="address"
-                    onChange={updateHospitalField}
-                    placeholder="Road, area, landmark"
-                    value={hospitalForm.address}
-                  />
+                  <Input id="hospital-address" name="address" onChange={updateHospitalField} value={hospitalForm.address} />
                 </div>
                 <div className="flex flex-wrap gap-3 sm:col-span-2">
                   <Button disabled={actionState === "hospital"} type="submit">
@@ -304,110 +441,15 @@ export default function AdminDashboardPage() {
 
           <Card>
             <CardHeader>
-              <Badge>Hospital network</Badge>
-              <CardTitle>Hospitals and assigned vaccines</CardTitle>
-              <CardDescription>
-                Each hospital can expose multiple vaccine offerings. Status can be toggled without deleting data.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {isLoading ? (
-                <p className="text-sm text-muted-foreground">Loading hospitals...</p>
-              ) : hospitals.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No hospitals yet. Add the first hospital above.</p>
-              ) : (
-                hospitals.map((hospital) => (
-                  <div key={hospital.id} className="rounded-2xl border border-border bg-background p-5">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <h3 className="text-lg font-bold text-foreground">{hospital.name}</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {hospital.city} • {hospital.pincode}
-                        </p>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">{hospital.address}</p>
-                      </div>
-                      <Button onClick={() => beginHospitalEdit(hospital)} size="sm" variant="outline">
-                        Edit
-                      </Button>
-                    </div>
-
-                    <div className="mt-4 space-y-3">
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                        Assigned vaccines
-                      </p>
-                      {hospital.offerings.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No vaccines mapped yet.</p>
-                      ) : (
-                        hospital.offerings.map((offering) => (
-                          <div
-                            key={offering.id}
-                            className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <div>
-                              <p className="font-semibold text-foreground">{offering.vaccine?.name}</p>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                {offering.vaccine?.description || "No description added."}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <Badge variant={offering.isActive ? "default" : "secondary"}>
-                                {offering.isActive ? "Active" : "Inactive"}
-                              </Badge>
-                              <Button
-                                disabled={actionState === `offering-${offering.id}`}
-                                onClick={() => handleOfferingToggle(offering.id, !offering.isActive)}
-                                size="sm"
-                                variant="outline"
-                              >
-                                {offering.isActive ? "Mark inactive" : "Activate"}
-                              </Button>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card className="bg-slate-950 text-slate-50">
-            <CardHeader>
-              <Badge className="bg-white/10 text-white">API slice</Badge>
-              <CardTitle className="text-2xl">What this phase unlocked</CardTitle>
-              <CardDescription className="text-slate-300">
-                The admin page is now backed by real PostgreSQL tables instead of static placeholder text.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm leading-7 text-slate-200">
-              <p>1. Hospitals are stored and editable.</p>
-              <p>2. Vaccines are stored in a reusable catalog.</p>
-              <p>3. Offerings connect hospitals and vaccines with active or inactive status.</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
               <Badge>Vaccine catalog</Badge>
-              <CardTitle>Create vaccine definitions</CardTitle>
-              <CardDescription>
-                These entries are reusable across hospitals and will later connect to pricing and time slots.
-              </CardDescription>
+              <CardTitle>Create vaccine types</CardTitle>
+              <CardDescription>These entries are reused across offerings, slots, and bookings.</CardDescription>
             </CardHeader>
             <CardContent>
               <form className="space-y-4" onSubmit={handleVaccineSubmit}>
                 <div className="space-y-2">
                   <Label htmlFor="vaccine-name">Vaccine name</Label>
-                  <Input
-                    id="vaccine-name"
-                    name="name"
-                    onChange={updateVaccineField}
-                    placeholder="Covaxin"
-                    value={vaccineForm.name}
-                  />
+                  <Input id="vaccine-name" name="name" onChange={updateVaccineField} value={vaccineForm.name} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="vaccine-description">Description</Label>
@@ -415,7 +457,6 @@ export default function AdminDashboardPage() {
                     id="vaccine-description"
                     name="description"
                     onChange={updateVaccineField}
-                    placeholder="Primary or booster vaccine details"
                     value={vaccineForm.description}
                   />
                 </div>
@@ -435,31 +476,6 @@ export default function AdminDashboardPage() {
                   Add vaccine
                 </Button>
               </form>
-
-              <div className="mt-6 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Current catalog
-                </p>
-                {isLoading ? (
-                  <p className="text-sm text-muted-foreground">Loading vaccines...</p>
-                ) : vaccines.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No vaccines created yet.</p>
-                ) : (
-                  vaccines.map((vaccine) => (
-                    <div key={vaccine.id} className="rounded-2xl border border-border bg-background p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold text-foreground">{vaccine.name}</p>
-                          <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                            {vaccine.description || "No description added."}
-                          </p>
-                        </div>
-                        <Badge>{vaccine.dosesRequired} dose{vaccine.dosesRequired > 1 ? "s" : ""}</Badge>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
             </CardContent>
           </Card>
 
@@ -467,21 +483,13 @@ export default function AdminDashboardPage() {
             <CardHeader>
               <Badge>Offerings</Badge>
               <CardTitle>Assign vaccines to hospitals</CardTitle>
-              <CardDescription>
-                This mapping is the bridge between catalog setup and the next pricing and slot phases.
-              </CardDescription>
+              <CardDescription>Offerings define where a vaccine is available and at what price.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <form className="space-y-4" onSubmit={handleOfferingSubmit}>
+            <CardContent className="space-y-5">
+              <form className="grid gap-4" onSubmit={handleOfferingSubmit}>
                 <div className="space-y-2">
                   <Label htmlFor="offering-hospital">Hospital</Label>
-                  <Select
-                    disabled={!offeringReady}
-                    id="offering-hospital"
-                    name="hospitalId"
-                    onChange={updateOfferingField}
-                    value={offeringForm.hospitalId}
-                  >
+                  <Select id="offering-hospital" name="hospitalId" onChange={updateOfferingField} value={offeringForm.hospitalId}>
                     <option value="">Select hospital</option>
                     {hospitals.map((hospital) => (
                       <option key={hospital.id} value={hospital.id}>
@@ -490,16 +498,9 @@ export default function AdminDashboardPage() {
                     ))}
                   </Select>
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="offering-vaccine">Vaccine</Label>
-                  <Select
-                    disabled={!offeringReady}
-                    id="offering-vaccine"
-                    name="vaccineId"
-                    onChange={updateOfferingField}
-                    value={offeringForm.vaccineId}
-                  >
+                  <Select id="offering-vaccine" name="vaccineId" onChange={updateOfferingField} value={offeringForm.vaccineId}>
                     <option value="">Select vaccine</option>
                     {vaccines.map((vaccine) => (
                       <option key={vaccine.id} value={vaccine.id}>
@@ -508,28 +509,262 @@ export default function AdminDashboardPage() {
                     ))}
                   </Select>
                 </div>
-
                 <label className="flex items-center gap-3 rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium text-foreground">
                   <input
                     checked={offeringForm.isActive}
-                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                     name="isActive"
                     onChange={updateOfferingField}
                     type="checkbox"
                   />
-                  Mark this offering active immediately
+                  Mark offering active immediately
                 </label>
-
-                <Button disabled={!offeringReady || actionState === "offering"} type="submit">
+                <Button disabled={actionState === "offering"} type="submit">
                   Save offering
                 </Button>
               </form>
 
-              {!offeringReady ? (
-                <p className="mt-4 text-sm text-muted-foreground">
-                  Add at least one hospital and one vaccine before assigning offerings.
+              <div className="space-y-4">
+                {isMasterLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading offerings...</p>
+                ) : offerings.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No offerings created yet.</p>
+                ) : (
+                  offerings.map((offering) => (
+                    <div key={offering.id} className="rounded-2xl border border-border bg-background p-4">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {offering.hospital.name} | {offering.vaccine.name}
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {offering.hospital.city} | {offering.hospital.pincode}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant={offering.isActive ? "default" : "secondary"}>
+                            {offering.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                          <Button
+                            disabled={actionState === `offering-${offering.id}`}
+                            onClick={() => handleOfferingToggle(offering.id, !offering.isActive)}
+                            size="sm"
+                            variant="outline"
+                          >
+                            {offering.isActive ? "Deactivate" : "Activate"}
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                        <div className="space-y-2">
+                          <Label htmlFor={`price-${offering.id}`}>Price (INR)</Label>
+                          <Input
+                            id={`price-${offering.id}`}
+                            min={0}
+                            onChange={(event) =>
+                              setPriceDrafts((current) => ({
+                                ...current,
+                                [offering.id]: event.target.value,
+                              }))
+                            }
+                            type="number"
+                            value={priceDrafts[offering.id] ?? 0}
+                          />
+                        </div>
+                        <Button
+                          disabled={actionState === `price-${offering.id}`}
+                          onClick={() => handlePriceSave(offering.id)}
+                          type="button"
+                        >
+                          Save price
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <Badge>{slotEditId ? "Edit slot" : "Create slot"}</Badge>
+              <CardTitle>{slotEditId ? "Update time slot" : "Add time slot"}</CardTitle>
+              <CardDescription>Time slots are the actual bookable units used by patients.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSlotSubmit}>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="slot-offering">Offering</Label>
+                  <Select id="slot-offering" name="offeringId" onChange={updateSlotField} value={slotForm.offeringId}>
+                    <option value="">Select hospital and vaccine</option>
+                    {offerings.map((offering) => (
+                      <option key={offering.id} value={offering.id}>
+                        {offering.hospital.name} | {offering.vaccine.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="slot-date">Date</Label>
+                  <Input id="slot-date" name="date" onChange={updateSlotField} type="date" value={slotForm.date} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="slot-capacity">Capacity</Label>
+                  <Input
+                    id="slot-capacity"
+                    min={1}
+                    name="capacity"
+                    onChange={updateSlotField}
+                    type="number"
+                    value={slotForm.capacity}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="slot-start">Start time</Label>
+                  <Input id="slot-start" name="startTime" onChange={updateSlotField} type="time" value={slotForm.startTime} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="slot-end">End time</Label>
+                  <Input id="slot-end" name="endTime" onChange={updateSlotField} type="time" value={slotForm.endTime} />
+                </div>
+                <div className="flex flex-wrap gap-3 md:col-span-2">
+                  <Button disabled={actionState === "slot"} type="submit">
+                    {slotEditId ? "Update slot" : "Create slot"}
+                  </Button>
+                  {slotEditId ? (
+                    <Button onClick={cancelSlotEdit} type="button" variant="outline">
+                      Cancel edit
+                    </Button>
+                  ) : null}
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Badge>Daily operations</Badge>
+              <CardTitle>Slots and bookings by day</CardTitle>
+              <CardDescription>Use filters to inspect capacity and bookings for a selected day.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="ops-date">Date</Label>
+                  <Input
+                    id="ops-date"
+                    name="date"
+                    onChange={updateOperationalFilter}
+                    type="date"
+                    value={operationalFilters.date}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ops-hospital">Hospital</Label>
+                  <Select
+                    id="ops-hospital"
+                    name="hospitalId"
+                    onChange={updateOperationalFilter}
+                    value={operationalFilters.hospitalId}
+                  >
+                    <option value="">All hospitals</option>
+                    {hospitals.map((hospital) => (
+                      <option key={hospital.id} value={hospital.id}>
+                        {hospital.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ops-vaccine">Vaccine</Label>
+                  <Select
+                    id="ops-vaccine"
+                    name="vaccineId"
+                    onChange={updateOperationalFilter}
+                    value={operationalFilters.vaccineId}
+                  >
+                    <option value="">All vaccines</option>
+                    {vaccines.map((vaccine) => (
+                      <option key={vaccine.id} value={vaccine.id}>
+                        {vaccine.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Time slots
                 </p>
-              ) : null}
+                {isOperationsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading slots...</p>
+                ) : slots.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No slots match the selected filters.</p>
+                ) : (
+                  slots.map((slot) => (
+                    <div key={slot.id} className="rounded-2xl border border-border bg-background p-4">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                          <p className="font-semibold text-foreground">
+                            {slot.hospital.name} | {slot.vaccine.name}
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {formatDateLabel(slot.date)} | {formatTimeLabel(slot.startTime)} - {formatTimeLabel(slot.endTime)}
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {slot.bookedCount}/{slot.capacity} booked | {slot.remainingCapacity} remaining |{" "}
+                            {formatCurrencyInr(slot.priceInr)}
+                          </p>
+                        </div>
+                        <Button onClick={() => startSlotEdit(slot)} size="sm" variant="outline">
+                          Edit slot
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Bookings for {formatDateLabel(adminBookings.date)}
+                </p>
+                {isOperationsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading bookings...</p>
+                ) : adminBookings.bookings.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No bookings found for this day.</p>
+                ) : (
+                  adminBookings.bookings.map((booking) => (
+                    <div key={booking.id} className="rounded-2xl border border-border bg-background p-4">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <p className="font-semibold text-foreground">{booking.user?.fullName}</p>
+                            <Badge variant={booking.status === "booked" ? "default" : "secondary"}>
+                              {booking.status}
+                            </Badge>
+                          </div>
+                          <p className="mt-1 text-sm text-muted-foreground">{booking.user?.email}</p>
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            {booking.hospital.name} | {booking.vaccine.name}
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {formatTimeLabel(booking.slot.startTime)} - {formatTimeLabel(booking.slot.endTime)} |{" "}
+                            {formatCurrencyInr(booking.lockedPriceInr)}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+                          {booking.confirmationCode}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

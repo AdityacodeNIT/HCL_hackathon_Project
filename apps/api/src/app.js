@@ -7,6 +7,7 @@ import notFound from "./middleware/not-found.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import catalogRoutes from "./modules/catalog/catalog.routes.js";
 import healthRoutes from "./modules/health/health.routes.js";
+import schedulingRoutes from "./modules/scheduling/scheduling.routes.js";
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.get("/", (_req, res) => {
 app.use(`${API_PREFIX}/health`, healthRoutes);
 app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}`, catalogRoutes);
+app.use(`${API_PREFIX}`, schedulingRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

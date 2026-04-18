@@ -71,3 +71,12 @@ export async function updateOfferingStatus(req, res) {
     data,
   });
 }
+
+export async function updateOfferingPrice(req, res) {
+  const data = await catalogService.updateOfferingPrice(req.params.offeringId, req.body);
+
+  res.json({
+    success: true,
+    data,
+  });
+}

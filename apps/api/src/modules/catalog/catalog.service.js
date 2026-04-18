@@ -3,6 +3,7 @@ import * as catalogRepo from "./catalog.repo.js";
 import {
   validateHospitalPayload,
   validateOfferingPayload,
+  validateOfferingPricePayload,
   validateOfferingStatusPayload,
   validateVaccinePayload,
 } from "./catalog.validation.js";
@@ -36,6 +37,7 @@ function mapOffering(row) {
     hospitalId: row.hospital_id,
     vaccineId: row.vaccine_id,
     isActive: row.is_active,
+    priceInr: row.price_inr,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     vaccine: row.vaccine_name
@@ -96,6 +98,8 @@ export async function searchPublicHospitals(query = {}) {
     city: String(query.city || "").trim(),
     pincode: String(query.pincode || "").trim(),
     vaccineId: String(query.vaccineId || "").trim(),
+    minPrice: query.minPrice ? Number(query.minPrice) : undefined,
+    maxPrice: query.maxPrice ? Number(query.maxPrice) : undefined,
   };
 
   const rows = await catalogRepo.searchPublicHospitalOfferings(filters);
@@ -114,6 +118,7 @@ export async function searchPublicHospitals(query = {}) {
     hospitalsById.get(hospitalId).offerings.push({
       id: row.offering_id,
       isActive: row.is_active,
+      priceInr: row.price_inr,
       createdAt: row.offering_created_at,
       updatedAt: row.offering_updated_at,
       vaccine: {
@@ -224,5 +229,22 @@ export async function updateOfferingStatus(offeringId, body) {
   }
 
   const offering = await catalogRepo.updateOfferingStatus(offeringId, payload.isActive);
+  return mapOffering(offering);
+}
+
+export async function updateOfferingPrice(offeringId, body) {
+  const { isValid, payload, errors } = validateOfferingPricePayload(body);
+
+  if (!isValid) {
+    throw new HttpError(400, "VALIDATION_ERROR", errors[0], errors);
+  }
+
+  const existingOffering = await catalogRepo.findOfferingById(offeringId);
+
+  if (!existingOffering) {
+    throw new HttpError(404, "OFFERING_NOT_FOUND", "Offering could not be found.");
+  }
+
+  const offering = await catalogRepo.updateOfferingPrice(offeringId, payload.priceInr);
   return mapOffering(offering);
 }

@@ -38,6 +38,14 @@ export function createOffering(token, payload) {
   });
 }
 
+export function updateOfferingPrice(token, offeringId, payload) {
+  return apiRequest(`/admin/offerings/${offeringId}/price`, {
+    method: "PUT",
+    body: payload,
+    token,
+  });
+}
+
 export function updateOfferingStatus(token, offeringId, payload) {
   return apiRequest(`/admin/offerings/${offeringId}`, {
     method: "PATCH",

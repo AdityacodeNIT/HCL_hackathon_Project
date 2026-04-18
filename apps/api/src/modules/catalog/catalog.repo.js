@@ -119,6 +119,7 @@ export async function listOfferings() {
         hv.hospital_id,
         hv.vaccine_id,
         hv.is_active,
+        hv.price_inr,
         hv.created_at,
         hv.updated_at,
         v.name AS vaccine_name,
@@ -157,6 +158,16 @@ export async function searchPublicHospitalOfferings(filters = {}) {
     conditions.push(`v.id = $${params.length}`);
   }
 
+  if (Number.isFinite(filters.minPrice)) {
+    params.push(filters.minPrice);
+    conditions.push(`hv.price_inr >= $${params.length}`);
+  }
+
+  if (Number.isFinite(filters.maxPrice)) {
+    params.push(filters.maxPrice);
+    conditions.push(`hv.price_inr <= $${params.length}`);
+  }
+
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const result = await pool.query(
@@ -171,6 +182,7 @@ export async function searchPublicHospitalOfferings(filters = {}) {
         h.updated_at,
         hv.id AS offering_id,
         hv.is_active,
+        hv.price_inr,
         hv.created_at AS offering_created_at,
         hv.updated_at AS offering_updated_at,
         v.id AS vaccine_id,
@@ -199,7 +211,7 @@ export async function upsertOffering({ hospitalId, vaccineId, isActive }) {
       SET
         is_active = EXCLUDED.is_active,
         updated_at = NOW()
-      RETURNING id, hospital_id, vaccine_id, is_active, created_at, updated_at
+      RETURNING id, hospital_id, vaccine_id, is_active, price_inr, created_at, updated_at
     `,
     [hospitalId, vaccineId, isActive]
   );
@@ -207,10 +219,26 @@ export async function upsertOffering({ hospitalId, vaccineId, isActive }) {
   return result.rows[0];
 }
 
+export async function updateOfferingPrice(id, priceInr) {
+  const result = await pool.query(
+    `
+      UPDATE hospital_vaccines
+      SET
+        price_inr = $2,
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING id, hospital_id, vaccine_id, is_active, price_inr, created_at, updated_at
+    `,
+    [id, priceInr]
+  );
+
+  return result.rows[0] || null;
+}
+
 export async function findOfferingById(id) {
   const result = await pool.query(
     `
-      SELECT id, hospital_id, vaccine_id, is_active, created_at, updated_at
+      SELECT id, hospital_id, vaccine_id, is_active, price_inr, created_at, updated_at
       FROM hospital_vaccines
       WHERE id = $1
       LIMIT 1
@@ -229,7 +257,7 @@ export async function updateOfferingStatus(id, isActive) {
         is_active = $2,
         updated_at = NOW()
       WHERE id = $1
-      RETURNING id, hospital_id, vaccine_id, is_active, created_at, updated_at
+      RETURNING id, hospital_id, vaccine_id, is_active, price_inr, created_at, updated_at
     `,
     [id, isActive]
   );

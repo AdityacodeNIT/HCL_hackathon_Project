@@ -94,3 +94,18 @@ export function validateOfferingStatusPayload(body = {}) {
         : ["Offering status must include a boolean isActive value."],
   };
 }
+
+export function validateOfferingPricePayload(body = {}) {
+  const priceInr = Number(body.priceInr);
+
+  return {
+    isValid: Number.isInteger(priceInr) && priceInr >= 0,
+    payload: {
+      priceInr,
+    },
+    errors:
+      Number.isInteger(priceInr) && priceInr >= 0
+        ? []
+        : ["Price must be a whole number greater than or equal to 0."],
+  };
+}

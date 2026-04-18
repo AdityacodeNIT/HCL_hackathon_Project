@@ -15,6 +15,11 @@ router.post("/admin/hospitals", ...adminGuard, asyncHandler(catalogController.cr
 router.put("/admin/hospitals/:hospitalId", ...adminGuard, asyncHandler(catalogController.updateHospital));
 router.post("/admin/vaccines", ...adminGuard, asyncHandler(catalogController.createVaccine));
 router.post("/admin/offerings", ...adminGuard, asyncHandler(catalogController.createOrUpdateOffering));
+router.put(
+  "/admin/offerings/:offeringId/price",
+  ...adminGuard,
+  asyncHandler(catalogController.updateOfferingPrice)
+);
 router.patch(
   "/admin/offerings/:offeringId",
   ...adminGuard,

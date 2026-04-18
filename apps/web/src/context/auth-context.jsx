@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import * as authService from "@/services/auth-service.js";
 
 const AuthContext = createContext(null);
-const tokenStorageKey = "DevNexus_token";
+const tokenStorageKey = "vaxbook_token";
 
 export function AuthProvider({ children }) {
   const navigate = useNavigate();
