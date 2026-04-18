@@ -8,6 +8,7 @@
 - `GET /api/v1/auth/me`
 - `POST /api/v1/auth/logout`
 - `GET /api/v1/vaccines`
+- `GET /api/v1/hospitals/search`
 - `GET /api/v1/admin/master-data`
 - `POST /api/v1/admin/hospitals`
 - `PUT /api/v1/admin/hospitals/:hospitalId`

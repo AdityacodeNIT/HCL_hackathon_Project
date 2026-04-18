@@ -90,6 +90,48 @@ export async function getPublicVaccineCatalog() {
   return vaccineRows.map(mapVaccine);
 }
 
+export async function searchPublicHospitals(query = {}) {
+  const filters = {
+    name: String(query.name || "").trim(),
+    city: String(query.city || "").trim(),
+    pincode: String(query.pincode || "").trim(),
+    vaccineId: String(query.vaccineId || "").trim(),
+  };
+
+  const rows = await catalogRepo.searchPublicHospitalOfferings(filters);
+  const hospitalsById = new Map();
+
+  rows.forEach((row) => {
+    const hospitalId = row.id;
+
+    if (!hospitalsById.has(hospitalId)) {
+      hospitalsById.set(hospitalId, {
+        ...mapHospital(row),
+        offerings: [],
+      });
+    }
+
+    hospitalsById.get(hospitalId).offerings.push({
+      id: row.offering_id,
+      isActive: row.is_active,
+      createdAt: row.offering_created_at,
+      updatedAt: row.offering_updated_at,
+      vaccine: {
+        id: row.vaccine_id,
+        name: row.vaccine_name,
+        description: row.vaccine_description,
+        dosesRequired: row.doses_required,
+      },
+    });
+  });
+
+  return {
+    filters,
+    count: hospitalsById.size,
+    hospitals: Array.from(hospitalsById.values()),
+  };
+}
+
 export async function createHospital(body) {
   const { isValid, payload, errors } = validateHospitalPayload(body);
 

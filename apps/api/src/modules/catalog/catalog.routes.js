@@ -8,6 +8,7 @@ const router = Router();
 const adminGuard = [authenticate, authorize([USER_ROLES.ADMIN])];
 
 router.get("/vaccines", asyncHandler(catalogController.getPublicVaccineCatalog));
+router.get("/hospitals/search", asyncHandler(catalogController.searchPublicHospitals));
 
 router.get("/admin/master-data", ...adminGuard, asyncHandler(catalogController.getAdminMasterData));
 router.post("/admin/hospitals", ...adminGuard, asyncHandler(catalogController.createHospital));

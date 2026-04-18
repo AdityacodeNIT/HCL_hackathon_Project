@@ -49,3 +49,20 @@ export function updateOfferingStatus(token, offeringId, payload) {
 export function getPublicVaccines() {
   return apiRequest("/vaccines");
 }
+
+export function searchPublicHospitals(filters = {}) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    const normalizedValue = String(value || "").trim();
+
+    if (normalizedValue) {
+      searchParams.set(key, normalizedValue);
+    }
+  });
+
+  const queryString = searchParams.toString();
+  const path = queryString ? `/hospitals/search?${queryString}` : "/hospitals/search";
+
+  return apiRequest(path);
+}

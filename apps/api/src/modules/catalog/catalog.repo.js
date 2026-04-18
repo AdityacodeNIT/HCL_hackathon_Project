@@ -133,6 +133,62 @@ export async function listOfferings() {
   return result.rows;
 }
 
+export async function searchPublicHospitalOfferings(filters = {}) {
+  const conditions = ["hv.is_active = TRUE"];
+  const params = [];
+
+  if (filters.name) {
+    params.push(`%${filters.name}%`);
+    conditions.push(`(h.name ILIKE $${params.length} OR h.address ILIKE $${params.length})`);
+  }
+
+  if (filters.city) {
+    params.push(`%${filters.city}%`);
+    conditions.push(`h.city ILIKE $${params.length}`);
+  }
+
+  if (filters.pincode) {
+    params.push(filters.pincode);
+    conditions.push(`h.pincode = $${params.length}`);
+  }
+
+  if (filters.vaccineId) {
+    params.push(filters.vaccineId);
+    conditions.push(`v.id = $${params.length}`);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const result = await pool.query(
+    `
+      SELECT
+        h.id,
+        h.name,
+        h.city,
+        h.pincode,
+        h.address,
+        h.created_at,
+        h.updated_at,
+        hv.id AS offering_id,
+        hv.is_active,
+        hv.created_at AS offering_created_at,
+        hv.updated_at AS offering_updated_at,
+        v.id AS vaccine_id,
+        v.name AS vaccine_name,
+        v.description AS vaccine_description,
+        v.doses_required
+      FROM hospitals h
+      INNER JOIN hospital_vaccines hv ON hv.hospital_id = h.id
+      INNER JOIN vaccines v ON v.id = hv.vaccine_id
+      ${whereClause}
+      ORDER BY h.name ASC, v.name ASC
+    `,
+    params
+  );
+
+  return result.rows;
+}
+
 export async function upsertOffering({ hospitalId, vaccineId, isActive }) {
   const result = await pool.query(
     `

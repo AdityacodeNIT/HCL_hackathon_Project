@@ -21,4 +21,4 @@ React + Vite frontend for patients and admins.
 - auth state handling
 - protected patient and admin dashboards
 - admin master-data management
-- patient vaccine catalog preview
+- patient hospital search and vaccine filtering

@@ -27,6 +27,7 @@ The repository now covers:
 - real authentication
 - role-aware app entry for `patient` and `admin`
 - hospital and vaccine master data management
+- patient hospital discovery and filter flow
 - PostgreSQL-ready backend structure
 
 ## Commands

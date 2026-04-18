@@ -18,6 +18,15 @@ export async function getPublicVaccineCatalog(_req, res) {
   });
 }
 
+export async function searchPublicHospitals(req, res) {
+  const data = await catalogService.searchPublicHospitals(req.query);
+
+  res.json({
+    success: true,
+    data,
+  });
+}
+
 export async function createHospital(req, res) {
   const data = await catalogService.createHospital(req.body);
 
