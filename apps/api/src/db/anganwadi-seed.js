@@ -140,6 +140,9 @@ export async function seedAnganwadisForDate(targetDate) {
 
     const formattedDate = formatDate(targetDate);
 
+    // Delete all existing Anganwadi time slots before seeding new date
+    await client.query(`DELETE FROM anganwadi_time_slots`);
+
     // Create time slots for the specified date
     for (const anganwadi of demoAnganwadis) {
       const offeringId = offeringByName.get(anganwadi.name);

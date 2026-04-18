@@ -104,7 +104,7 @@ export async function searchPublicHospitals(query = {}) {
     slotDate: query.slotDate ? String(query.slotDate).trim() : undefined,
   };
 
-  // Check if searching for Polio vaccine
+  // Check if searching for Polio vaccine (ONLY when explicitly selected, not "All vaccines")
   let isPolioSearch = false;
   if (filters.vaccineId) {
     const vaccine = await catalogRepo.findVaccineById(filters.vaccineId);
