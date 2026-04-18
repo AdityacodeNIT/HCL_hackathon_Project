@@ -1,4 +1,5 @@
 import { LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/context/auth-context.jsx";
 import { Badge } from "@/components/ui/badge.jsx";
@@ -10,8 +11,22 @@ const navigationByRole = {
 };
 
 export default function AppShell({ title, description, children }) {
-  const { logout, user } = useAuth();
+  const { logout, user, isLoggingOut } = useAuth();
   const navigation = navigationByRole[user.role] || [];
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  function handleLogoutClick() {
+    setShowLogoutConfirm(true);
+  }
+
+  function handleConfirmLogout() {
+    setShowLogoutConfirm(false);
+    logout();
+  }
+
+  function handleCancelLogout() {
+    setShowLogoutConfirm(false);
+  }
 
   return (
     <div className="min-h-screen bg-background bg-hero-wash">
@@ -35,9 +50,9 @@ export default function AppShell({ title, description, children }) {
               <div className="rounded-full border border-border bg-card px-4 py-2 text-sm text-foreground">
                 {user.fullName}
               </div>
-              <Button onClick={logout} size="sm" variant="outline">
+              <Button onClick={handleLogoutClick} size="sm" variant="outline" disabled={isLoggingOut}>
                 <LogOut className="mr-2 h-4 w-4" />
-                Logout
+                {isLoggingOut ? "Logging out..." : "Logout"}
               </Button>
             </div>
             <nav className="flex flex-wrap gap-2">
@@ -61,6 +76,27 @@ export default function AppShell({ title, description, children }) {
           </div>
         </div>
       </header>
+      
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-lg">
+            <h2 className="text-xl font-bold text-foreground">Confirm Logout</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Are you sure you want to logout? Any unsaved changes will be lost.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button onClick={handleCancelLogout} variant="outline" size="sm">
+                Cancel
+              </Button>
+              <Button onClick={handleConfirmLogout} variant="destructive" size="sm">
+                <LogOut className="mr-2 h-4 w-4" />
+                Yes, Logout
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <main className="container py-8">{children}</main>
     </div>
   );

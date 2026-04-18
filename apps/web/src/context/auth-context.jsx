@@ -10,6 +10,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem(tokenStorageKey));
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -66,6 +67,7 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
+    setIsLoggingOut(true);
     try {
       if (token) {
         await authService.logout(token);
@@ -76,6 +78,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem(tokenStorageKey);
       setToken(null);
       setUser(null);
+      setIsLoggingOut(false);
       navigate("/login", { replace: true });
     }
   }
@@ -84,13 +87,14 @@ export function AuthProvider({ children }) {
     () => ({
       isAuthenticated: Boolean(user),
       isBootstrapping,
+      isLoggingOut,
       login,
       logout,
       register,
       token,
       user,
     }),
-    [isBootstrapping, token, user]
+    [isBootstrapping, isLoggingOut, token, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

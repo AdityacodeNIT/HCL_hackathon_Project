@@ -80,3 +80,39 @@ export async function cancelBooking(req, res) {
     data,
   });
 }
+
+export async function approveBooking(req, res) {
+  const data = await schedulingService.approveBooking(req.user.id, req.params.bookingId);
+
+  res.json({
+    success: true,
+    data,
+  });
+}
+
+export async function completeBooking(req, res) {
+  const data = await schedulingService.completeBooking(req.user.id, req.params.bookingId);
+
+  res.json({
+    success: true,
+    data,
+  });
+}
+
+export async function listHospitalBookings(req, res) {
+  const data = await schedulingService.listHospitalBookings(req.params.hospitalId, req.query);
+
+  res.json({
+    success: true,
+    data,
+  });
+}
+
+export async function adminCancelBooking(req, res) {
+  const data = await schedulingService.adminCancelBooking(req.user.id, req.params.bookingId);
+
+  res.json({
+    success: true,
+    data,
+  });
+}

@@ -97,3 +97,43 @@ export function cancelBooking(token, bookingId) {
     token,
   });
 }
+
+export function approveBooking(token, bookingId) {
+  return apiRequest(`/admin/bookings/${bookingId}/approve`, {
+    method: "PATCH",
+    token,
+  });
+}
+
+export function completeBooking(token, bookingId) {
+  return apiRequest(`/admin/bookings/${bookingId}/complete`, {
+    method: "PATCH",
+    token,
+  });
+}
+
+export function listHospitalBookings(token, hospitalId, filters = {}) {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    const normalizedValue = String(value || "").trim();
+
+    if (normalizedValue) {
+      searchParams.set(key, normalizedValue);
+    }
+  });
+
+  const queryString = searchParams.toString();
+  const path = queryString
+    ? `/admin/hospitals/${hospitalId}/bookings?${queryString}`
+    : `/admin/hospitals/${hospitalId}/bookings`;
+
+  return apiRequest(path, { token });
+}
+
+export function adminCancelBooking(token, bookingId) {
+  return apiRequest(`/admin/bookings/${bookingId}`, {
+    method: "DELETE",
+    token,
+  });
+}

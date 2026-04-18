@@ -402,7 +402,12 @@ export async function listMyBookings(userId, db = pool) {
       INNER JOIN vaccines v ON v.id = hv.vaccine_id
       WHERE b.user_id = $1
       ORDER BY
-        CASE WHEN b.status = 'booked' THEN 0 ELSE 1 END,
+        CASE 
+          WHEN b.status = 'pending' THEN 0
+          WHEN b.status = 'approved' THEN 1
+          WHEN b.status = 'completed' THEN 2
+          ELSE 3
+        END,
         ts.slot_date DESC,
         ts.start_time DESC
     `,
@@ -465,6 +470,125 @@ export async function listAdminBookings(filters, db = pool) {
       INNER JOIN vaccines v ON v.id = hv.vaccine_id
       WHERE ${conditions.join(" AND ")}
       ORDER BY ts.slot_date ASC, ts.start_time ASC, h.name ASC
+    `,
+    params
+  );
+
+  return result.rows;
+}
+
+export async function approveBooking(bookingId, adminId, db = pool) {
+  const result = await runQuery(
+    db,
+    `
+      UPDATE bookings
+      SET
+        status = 'approved',
+        approved_by = $2,
+        approved_at = NOW(),
+        updated_at = NOW()
+      WHERE id = $1
+        AND status = 'pending'
+      RETURNING id, user_id, hospital_vaccine_id, time_slot_id, status, locked_price_inr, confirmation_code, 
+                approved_by, approved_at, completed_by, completed_at, created_at, updated_at
+    `,
+    [bookingId, adminId]
+  );
+
+  return result.rows[0] || null;
+}
+
+export async function completeBooking(bookingId, adminId, db = pool) {
+  const result = await runQuery(
+    db,
+    `
+      UPDATE bookings
+      SET
+        status = 'completed',
+        completed_by = $2,
+        completed_at = NOW(),
+        updated_at = NOW()
+      WHERE id = $1
+        AND status = 'approved'
+      RETURNING id, user_id, hospital_vaccine_id, time_slot_id, status, locked_price_inr, confirmation_code,
+                approved_by, approved_at, completed_by, completed_at, created_at, updated_at
+    `,
+    [bookingId, adminId]
+  );
+
+  return result.rows[0] || null;
+}
+
+export async function listBookingsByHospital(hospitalId, filters = {}, db = pool) {
+  const params = [hospitalId];
+  const conditions = ["h.id = $1"];
+
+  if (filters.date) {
+    params.push(filters.date);
+    conditions.push(`ts.slot_date = $${params.length}`);
+  }
+
+  if (filters.status) {
+    params.push(filters.status);
+    conditions.push(`b.status = $${params.length}`);
+  }
+
+  if (filters.vaccineId) {
+    params.push(filters.vaccineId);
+    conditions.push(`v.id = $${params.length}`);
+  }
+
+  const result = await runQuery(
+    db,
+    `
+      SELECT
+        b.id,
+        b.user_id,
+        b.hospital_vaccine_id,
+        b.time_slot_id,
+        b.status,
+        b.locked_price_inr,
+        b.confirmation_code,
+        b.approved_by,
+        b.approved_at,
+        b.completed_by,
+        b.completed_at,
+        b.created_at,
+        b.updated_at,
+        u.full_name,
+        u.email,
+        ts.slot_date,
+        ts.start_time,
+        ts.end_time,
+        ts.capacity,
+        ts.booked_count,
+        h.id AS hospital_id,
+        h.name AS hospital_name,
+        h.city,
+        h.pincode,
+        v.id AS vaccine_id,
+        v.name AS vaccine_name,
+        CASE 
+          WHEN ts.slot_date < CURRENT_DATE THEN 'past'
+          WHEN ts.slot_date = CURRENT_DATE THEN 'today'
+          ELSE 'upcoming'
+        END AS booking_period
+      FROM bookings b
+      INNER JOIN users u ON u.id = b.user_id
+      INNER JOIN time_slots ts ON ts.id = b.time_slot_id
+      INNER JOIN hospital_vaccines hv ON hv.id = b.hospital_vaccine_id
+      INNER JOIN hospitals h ON h.id = hv.hospital_id
+      INNER JOIN vaccines v ON v.id = hv.vaccine_id
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY
+        CASE 
+          WHEN b.status = 'pending' THEN 0
+          WHEN b.status = 'approved' THEN 1
+          WHEN b.status = 'completed' THEN 2
+          ELSE 3
+        END,
+        ts.slot_date DESC,
+        ts.start_time DESC
     `,
     params
   );

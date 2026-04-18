@@ -8,7 +8,9 @@ export const USER_ROLES = {
 export const USER_ROLE_VALUES = Object.values(USER_ROLES);
 
 export const BOOKING_STATUSES = {
-  BOOKED: "booked",
+  PENDING: "pending",
+  APPROVED: "approved",
+  COMPLETED: "completed",
   CANCELLED: "cancelled",
 };
 

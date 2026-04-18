@@ -352,6 +352,51 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function handleApproveBooking(bookingId) {
+    clearMessages();
+    setActionState(`approve-${bookingId}`);
+
+    try {
+      await schedulingService.approveBooking(token, bookingId);
+      setSuccessMessage("Booking approved.");
+      await loadOperationalData({ silent: true });
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setActionState("");
+    }
+  }
+
+  async function handleCompleteBooking(bookingId) {
+    clearMessages();
+    setActionState(`complete-${bookingId}`);
+
+    try {
+      await schedulingService.completeBooking(token, bookingId);
+      setSuccessMessage("Booking marked as completed.");
+      await loadOperationalData({ silent: true });
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setActionState("");
+    }
+  }
+
+  async function handleAdminCancelBooking(bookingId) {
+    clearMessages();
+    setActionState(`cancel-${bookingId}`);
+
+    try {
+      await schedulingService.adminCancelBooking(token, bookingId);
+      setSuccessMessage("Booking cancelled by admin.");
+      await loadOperationalData({ silent: true });
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setActionState("");
+    }
+  }
+
   return (
     <AppShell
       title="Admin Dashboard"
@@ -365,8 +410,8 @@ export default function AdminDashboardPage() {
         <StatCard icon={ClipboardList} label="Bookings" value={adminBookings.bookings.length} />
         <StatCard
           icon={ShieldCheck}
-          label="Booked Today"
-          value={adminBookings.bookings.filter((booking) => booking.status === "booked").length}
+          label="Pending"
+          value={adminBookings.bookings.filter((booking) => booking.status === "pending").length}
         />
       </div>
 
@@ -740,25 +785,59 @@ export default function AdminDashboardPage() {
                 ) : (
                   adminBookings.bookings.map((booking) => (
                     <div key={booking.id} className="rounded-2xl border border-border bg-background p-4">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-3">
-                            <p className="font-semibold text-foreground">{booking.user?.fullName}</p>
-                            <Badge variant={booking.status === "booked" ? "default" : "secondary"}>
-                              {booking.status}
-                            </Badge>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <p className="font-semibold text-foreground">{booking.user?.fullName}</p>
+                              <Badge variant={booking.status === "pending" ? "outline" : booking.status === "approved" ? "default" : booking.status === "completed" ? "secondary" : "secondary"}>
+                                {booking.status}
+                              </Badge>
+                            </div>
+                            <p className="mt-1 text-sm text-muted-foreground">{booking.user?.email}</p>
+                            <p className="mt-2 text-sm text-muted-foreground">
+                              {booking.hospital.name} | {booking.vaccine.name}
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {formatTimeLabel(booking.slot.startTime)} - {formatTimeLabel(booking.slot.endTime)} |{" "}
+                              {formatCurrencyInr(booking.lockedPriceInr)}
+                            </p>
                           </div>
-                          <p className="mt-1 text-sm text-muted-foreground">{booking.user?.email}</p>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            {booking.hospital.name} | {booking.vaccine.name}
-                          </p>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {formatTimeLabel(booking.slot.startTime)} - {formatTimeLabel(booking.slot.endTime)} |{" "}
-                            {formatCurrencyInr(booking.lockedPriceInr)}
-                          </p>
-                        </div>
-                        <div className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-                          {booking.confirmationCode}
+                          <div className="flex flex-col gap-2">
+                            <div className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+                              {booking.confirmationCode}
+                            </div>
+                            {booking.status === "pending" && (
+                              <Button
+                                disabled={actionState === `approve-${booking.id}`}
+                                onClick={() => handleApproveBooking(booking.id)}
+                                size="sm"
+                                variant="default"
+                              >
+                                {actionState === `approve-${booking.id}` ? "Approving..." : "Approve"}
+                              </Button>
+                            )}
+                            {booking.status === "approved" && (
+                              <Button
+                                disabled={actionState === `complete-${booking.id}`}
+                                onClick={() => handleCompleteBooking(booking.id)}
+                                size="sm"
+                                variant="default"
+                              >
+                                {actionState === `complete-${booking.id}` ? "Completing..." : "Mark Complete"}
+                              </Button>
+                            )}
+                            {(booking.status === "pending" || booking.status === "approved") && (
+                              <Button
+                                disabled={actionState === `cancel-${booking.id}`}
+                                onClick={() => handleAdminCancelBooking(booking.id)}
+                                size="sm"
+                                variant="destructive"
+                              >
+                                {actionState === `cancel-${booking.id}` ? "Cancelling..." : "Cancel"}
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

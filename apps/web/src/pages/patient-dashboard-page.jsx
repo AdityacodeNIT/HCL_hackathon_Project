@@ -355,7 +355,7 @@ export default function PatientDashboardPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Upcoming</p>
               <p className="mt-1 text-3xl font-extrabold tracking-tight text-foreground">
-                {myBookings.filter((b) => (b.bookingPeriod === 'upcoming' || b.bookingPeriod === 'today') && b.status === 'booked').length}
+                {myBookings.filter((b) => (b.bookingPeriod === 'upcoming' || b.bookingPeriod === 'today') && (b.status === 'pending' || b.status === 'approved')).length}
               </p>
             </div>
           </CardContent>
@@ -368,7 +368,7 @@ export default function PatientDashboardPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Completed</p>
               <p className="mt-1 text-3xl font-extrabold tracking-tight text-foreground">
-                {myBookings.filter((b) => b.bookingPeriod === 'past' && b.status === 'booked').length}
+                {myBookings.filter((b) => b.status === 'completed').length}
               </p>
             </div>
           </CardContent>
@@ -651,10 +651,10 @@ export default function PatientDashboardPage() {
                 <>
                   {(() => {
                     const upcomingBookings = myBookings.filter(
-                      (b) => (b.bookingPeriod === 'upcoming' || b.bookingPeriod === 'today') && b.status === 'booked'
+                      (b) => (b.bookingPeriod === 'upcoming' || b.bookingPeriod === 'today') && (b.status === 'pending' || b.status === 'approved')
                     );
                     const pastBookings = myBookings.filter(
-                      (b) => b.bookingPeriod === 'past' || b.status === 'cancelled'
+                      (b) => b.bookingPeriod === 'past' || b.status === 'cancelled' || b.status === 'completed'
                     );
 
                     return (
@@ -692,7 +692,7 @@ export default function PatientDashboardPage() {
                             {booking.confirmationCode}
                           </p>
                         </div>
-                        {booking.status === "booked" ? (
+                        {booking.status === "pending" || booking.status === "approved" ? (
                           <div className="flex flex-wrap gap-2">
                             <Button onClick={() => toggleReschedulePanel(booking.id)} size="sm" variant="outline">
                               {reschedule?.open ? "Close reschedule" : "Reschedule"}
@@ -709,7 +709,7 @@ export default function PatientDashboardPage() {
                         ) : null}
                       </div>
 
-                      {booking.status === "booked" && reschedule?.open ? (
+                      {(booking.status === "pending" || booking.status === "approved") && reschedule?.open ? (
                         <div className="mt-4 space-y-4 rounded-2xl border border-border bg-card p-4">
                           <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
                             <div className="space-y-2">
@@ -783,10 +783,10 @@ export default function PatientDashboardPage() {
                                     <div>
                                       <div className="flex flex-wrap items-center gap-3">
                                         <p className="font-semibold text-foreground">{booking.hospital.name}</p>
-                                        <Badge variant={booking.status === "booked" ? "default" : "secondary"}>
+                                        <Badge variant={booking.status === "pending" ? "outline" : booking.status === "approved" ? "default" : "secondary"}>
                                           {booking.status}
                                         </Badge>
-                                        {booking.bookingPeriod === 'past' && booking.status === 'booked' && (
+                                        {booking.bookingPeriod === 'past' && booking.status === 'completed' && (
                                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                                             Completed
                                           </Badge>

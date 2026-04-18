@@ -56,6 +56,10 @@ function mapBooking(row) {
     confirmationCode: row.confirmation_code,
     lockedPriceInr: row.locked_price_inr,
     bookingPeriod: row.booking_period || null,
+    approvedBy: row.approved_by || null,
+    approvedAt: row.approved_at || null,
+    completedBy: row.completed_by || null,
+    completedAt: row.completed_at || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     user: row.full_name
@@ -300,7 +304,7 @@ export async function createBooking(userId, body) {
         userId,
         hospitalVaccineId: slot.hospital_vaccine_id,
         timeSlotId: slot.id,
-        status: BOOKING_STATUSES.BOOKED,
+        status: BOOKING_STATUSES.PENDING,
         lockedPriceInr: slot.price_inr,
         confirmationCode: createConfirmationCode(),
       },
@@ -342,8 +346,8 @@ export async function rescheduleBooking(userId, bookingId, body) {
       throw new HttpError(404, "BOOKING_NOT_FOUND", "Booking could not be found.");
     }
 
-    if (booking.status !== BOOKING_STATUSES.BOOKED) {
-      throw new HttpError(400, "BOOKING_CANCELLED", "Cancelled bookings cannot be modified.");
+    if (booking.status !== BOOKING_STATUSES.PENDING && booking.status !== BOOKING_STATUSES.APPROVED) {
+      throw new HttpError(400, "BOOKING_CANCELLED", "Cancelled or completed bookings cannot be modified.");
     }
 
     const newSlot = await schedulingRepo.findSlotById(payload.timeSlotId, client, { forUpdate: true });
@@ -418,9 +422,102 @@ export async function cancelBooking(userId, bookingId) {
       throw new HttpError(404, "BOOKING_NOT_FOUND", "Booking could not be found.");
     }
 
-    if (booking.status !== BOOKING_STATUSES.BOOKED) {
-      throw new HttpError(400, "BOOKING_ALREADY_CANCELLED", "This booking is already cancelled.");
+    if (booking.status !== BOOKING_STATUSES.PENDING && booking.status !== BOOKING_STATUSES.APPROVED) {
+      throw new HttpError(400, "BOOKING_ALREADY_CANCELLED", "This booking is already cancelled or completed.");
     }
+
+    const updatedSlot = await schedulingRepo.adjustSlotBookedCount(booking.time_slot_id, -1, client);
+
+    if (!updatedSlot) {
+      throw new HttpError(409, "SLOT_UPDATE_FAILED", "Could not release the booked slot.");
+    }
+
+    await schedulingRepo.updateBookingStatus(bookingId, BOOKING_STATUSES.CANCELLED, client);
+
+    await client.query("COMMIT");
+
+    const cancelledBooking = await schedulingRepo.findBookingById(bookingId);
+    return mapBooking(cancelledBooking);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function approveBooking(adminId, bookingId) {
+  const booking = await schedulingRepo.findBookingById(bookingId);
+
+  if (!booking) {
+    throw new HttpError(404, "BOOKING_NOT_FOUND", "Booking could not be found.");
+  }
+
+  if (booking.status !== BOOKING_STATUSES.PENDING) {
+    throw new HttpError(400, "INVALID_STATUS", "Only pending bookings can be approved.");
+  }
+
+  const updatedBooking = await schedulingRepo.approveBooking(bookingId, adminId);
+
+  if (!updatedBooking) {
+    throw new HttpError(400, "APPROVAL_FAILED", "Failed to approve booking.");
+  }
+
+  const savedBooking = await schedulingRepo.findBookingById(bookingId);
+  return mapBooking(savedBooking);
+}
+
+export async function completeBooking(adminId, bookingId) {
+  const booking = await schedulingRepo.findBookingById(bookingId);
+
+  if (!booking) {
+    throw new HttpError(404, "BOOKING_NOT_FOUND", "Booking could not be found.");
+  }
+
+  if (booking.status !== BOOKING_STATUSES.APPROVED) {
+    throw new HttpError(400, "INVALID_STATUS", "Only approved bookings can be completed.");
+  }
+
+  const updatedBooking = await schedulingRepo.completeBooking(bookingId, adminId);
+
+  if (!updatedBooking) {
+    throw new HttpError(400, "COMPLETION_FAILED", "Failed to complete booking.");
+  }
+
+  const savedBooking = await schedulingRepo.findBookingById(bookingId);
+  return mapBooking(savedBooking);
+}
+
+export async function listHospitalBookings(hospitalId, query) {
+  const { isValid, payload, errors } = validateAdminFilters(query);
+
+  if (!isValid) {
+    throw new HttpError(400, "VALIDATION_ERROR", errors[0], errors);
+  }
+
+  const rows = await schedulingRepo.listBookingsByHospital(hospitalId, payload);
+  return rows.map(mapBooking);
+}
+
+export async function adminCancelBooking(adminId, bookingId) {
+  const booking = await schedulingRepo.findBookingById(bookingId);
+
+  if (!booking) {
+    throw new HttpError(404, "BOOKING_NOT_FOUND", "Booking could not be found.");
+  }
+
+  if (booking.status === BOOKING_STATUSES.CANCELLED) {
+    throw new HttpError(400, "ALREADY_CANCELLED", "This booking is already cancelled.");
+  }
+
+  if (booking.status === BOOKING_STATUSES.COMPLETED) {
+    throw new HttpError(400, "CANNOT_CANCEL_COMPLETED", "Completed bookings cannot be cancelled.");
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
 
     const updatedSlot = await schedulingRepo.adjustSlotBookedCount(booking.time_slot_id, -1, client);
 

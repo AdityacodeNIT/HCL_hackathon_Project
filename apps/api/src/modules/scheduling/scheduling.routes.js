@@ -19,6 +19,10 @@ router.get("/admin/slots", ...adminGuard, asyncHandler(schedulingController.list
 router.post("/admin/slots", ...adminGuard, asyncHandler(schedulingController.createSlot));
 router.put("/admin/slots/:slotId", ...adminGuard, asyncHandler(schedulingController.updateSlot));
 router.get("/admin/bookings", ...adminGuard, asyncHandler(schedulingController.listAdminBookings));
+router.get("/admin/hospitals/:hospitalId/bookings", ...adminGuard, asyncHandler(schedulingController.listHospitalBookings));
+router.patch("/admin/bookings/:bookingId/approve", ...adminGuard, asyncHandler(schedulingController.approveBooking));
+router.patch("/admin/bookings/:bookingId/complete", ...adminGuard, asyncHandler(schedulingController.completeBooking));
+router.delete("/admin/bookings/:bookingId", ...adminGuard, asyncHandler(schedulingController.adminCancelBooking));
 
 router.post("/bookings", ...patientGuard, asyncHandler(schedulingController.createBooking));
 router.get("/bookings/me", ...patientGuard, asyncHandler(schedulingController.listMyBookings));
