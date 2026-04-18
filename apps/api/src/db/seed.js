@@ -34,6 +34,11 @@ const demoVaccines = [
     description: "Viral vector vaccine used for primary and booster coverage.",
     dosesRequired: 2,
   },
+  {
+    name: "Polio",
+    description: "Oral polio vaccine administered at Anganwadis for children.",
+    dosesRequired: 4,
+  },
 ];
 
 const demoHospitals = [

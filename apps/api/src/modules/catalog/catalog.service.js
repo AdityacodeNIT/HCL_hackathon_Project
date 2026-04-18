@@ -1,5 +1,6 @@
 import HttpError from "../../utils/http-error.js";
 import * as catalogRepo from "./catalog.repo.js";
+import { seedAnganwadisForDate } from "../../db/anganwadi-seed.js";
 import {
   validateHospitalPayload,
   validateOfferingPayload,
@@ -100,8 +101,64 @@ export async function searchPublicHospitals(query = {}) {
     vaccineId: String(query.vaccineId || "").trim(),
     minPrice: query.minPrice ? Number(query.minPrice) : undefined,
     maxPrice: query.maxPrice ? Number(query.maxPrice) : undefined,
+    slotDate: query.slotDate ? String(query.slotDate).trim() : undefined,
   };
 
+  // Check if searching for Polio vaccine
+  let isPolioSearch = false;
+  if (filters.vaccineId) {
+    const vaccine = await catalogRepo.findVaccineById(filters.vaccineId);
+    if (vaccine && vaccine.name.toLowerCase() === 'polio') {
+      isPolioSearch = true;
+    }
+  }
+
+  // If Polio, search Anganwadis instead of hospitals
+  if (isPolioSearch) {
+    const rows = await catalogRepo.searchPublicAnganwadiOfferings(filters);
+    const anganwadisById = new Map();
+
+    rows.forEach((row) => {
+      const anganwadiId = row.id;
+
+      if (!anganwadisById.has(anganwadiId)) {
+        anganwadisById.set(anganwadiId, {
+          id: row.id,
+          name: row.name,
+          city: row.city,
+          pincode: row.pincode,
+          address: row.address,
+          type: 'anganwadi',
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          offerings: [],
+        });
+      }
+
+      anganwadisById.get(anganwadiId).offerings.push({
+        id: row.offering_id,
+        isActive: row.is_active,
+        priceInr: row.price_inr,
+        createdAt: row.offering_created_at,
+        updatedAt: row.offering_updated_at,
+        vaccine: {
+          id: row.vaccine_id,
+          name: row.vaccine_name,
+          description: row.vaccine_description,
+          dosesRequired: row.doses_required,
+        },
+      });
+    });
+
+    return {
+      filters,
+      count: anganwadisById.size,
+      hospitals: Array.from(anganwadisById.values()),
+      type: 'anganwadi',
+    };
+  }
+
+  // Regular hospital search
   const rows = await catalogRepo.searchPublicHospitalOfferings(filters);
   const hospitalsById = new Map();
 
@@ -111,6 +168,7 @@ export async function searchPublicHospitals(query = {}) {
     if (!hospitalsById.has(hospitalId)) {
       hospitalsById.set(hospitalId, {
         ...mapHospital(row),
+        type: 'hospital',
         offerings: [],
       });
     }
@@ -134,6 +192,7 @@ export async function searchPublicHospitals(query = {}) {
     filters,
     count: hospitalsById.size,
     hospitals: Array.from(hospitalsById.values()),
+    type: 'hospital',
   };
 }
 
@@ -247,4 +306,19 @@ export async function updateOfferingPrice(offeringId, body) {
 
   const offering = await catalogRepo.updateOfferingPrice(offeringId, payload.priceInr);
   return mapOffering(offering);
+}
+
+export async function seedAnganwadiData(body) {
+  const { date } = body;
+
+  if (!date) {
+    throw new HttpError(400, "VALIDATION_ERROR", "Date is required.");
+  }
+
+  try {
+    const result = await seedAnganwadisForDate(date);
+    return result;
+  } catch (error) {
+    throw new HttpError(500, "SEED_ERROR", error.message);
+  }
 }

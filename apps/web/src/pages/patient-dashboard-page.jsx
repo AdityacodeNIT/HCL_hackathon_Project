@@ -116,6 +116,8 @@ export default function PatientDashboardPage() {
 
   useEffect(() => {
     setAvailabilityByHospital({});
+    // Re-run search when date changes to update Anganwadi results
+    runSearch();
   }, [availabilityDate, searchFilters.vaccineId]);
 
   function clearMessages() {
@@ -133,7 +135,12 @@ export default function PatientDashboardPage() {
     setIsResultsLoading(true);
 
     try {
-      const data = await catalogService.searchPublicHospitals(filters);
+      // Include availability date in search for Polio/Anganwadi filtering
+      const searchFiltersWithDate = {
+        ...filters,
+        slotDate: availabilityDate,
+      };
+      const data = await catalogService.searchPublicHospitals(searchFiltersWithDate);
       setHospitalResults(data.hospitals || []);
     } catch (error) {
       setErrorMessage(error.message);

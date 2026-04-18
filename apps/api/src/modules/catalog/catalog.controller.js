@@ -80,3 +80,12 @@ export async function updateOfferingPrice(req, res) {
     data,
   });
 }
+
+export async function seedAnganwadiData(req, res) {
+  const data = await catalogService.seedAnganwadiData(req.body);
+
+  res.json({
+    success: true,
+    data,
+  });
+}

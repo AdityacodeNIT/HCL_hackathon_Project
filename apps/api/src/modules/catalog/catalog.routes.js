@@ -25,5 +25,6 @@ router.patch(
   ...adminGuard,
   asyncHandler(catalogController.updateOfferingStatus)
 );
+router.post("/admin/anganwadi/seed", ...adminGuard, asyncHandler(catalogController.seedAnganwadiData));
 
 export default router;

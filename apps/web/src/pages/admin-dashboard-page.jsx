@@ -98,6 +98,7 @@ export default function AdminDashboardPage() {
   const [actionState, setActionState] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [anganwadiSeedDate, setAnganwadiSeedDate] = useState(getTodayDateInputValue());
 
   const hospitals = masterData.hospitals || [];
   const vaccines = masterData.vaccines || [];
@@ -397,6 +398,21 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function handleAnganwadiSeed() {
+    clearMessages();
+    setActionState("anganwadi-seed");
+
+    try {
+      const response = await catalogService.seedAnganwadiData(token, { date: anganwadiSeedDate });
+      setSuccessMessage(`Anganwadi data seeded successfully for ${response.date}. Created ${response.slotsCreated} slots across ${response.anganwadiCount} centers.`);
+      await loadMasterData({ silent: true });
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setActionState("");
+    }
+  }
+
   return (
     <AppShell
       title="Admin Dashboard"
@@ -434,6 +450,36 @@ export default function AdminDashboardPage() {
           </Button>
         </div>
       </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <Badge>Polio Campaign</Badge>
+          <CardTitle>Seed Anganwadi Data for Polio</CardTitle>
+          <CardDescription>
+            Generate Anganwadi centers and time slots for Polio vaccination on a specific date.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="anganwadi-seed-date">Select Date for Polio Campaign</Label>
+              <Input
+                id="anganwadi-seed-date"
+                type="date"
+                value={anganwadiSeedDate}
+                onChange={(e) => setAnganwadiSeedDate(e.target.value)}
+              />
+            </div>
+            <Button
+              onClick={handleAnganwadiSeed}
+              disabled={actionState === "anganwadi-seed"}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {actionState === "anganwadi-seed" ? "Seeding..." : "Seed Anganwadi Data"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {errorMessage ? <Alert className="mt-4" variant="destructive">{errorMessage}</Alert> : null}
       {successMessage ? <Alert className="mt-4">{successMessage}</Alert> : null}

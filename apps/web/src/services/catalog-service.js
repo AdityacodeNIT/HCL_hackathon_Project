@@ -74,3 +74,11 @@ export function searchPublicHospitals(filters = {}) {
 
   return apiRequest(path);
 }
+
+export function seedAnganwadiData(token, payload) {
+  return apiRequest("/admin/anganwadi/seed", {
+    method: "POST",
+    body: payload,
+    token,
+  });
+}

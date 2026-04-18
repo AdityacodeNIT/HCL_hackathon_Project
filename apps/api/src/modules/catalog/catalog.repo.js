@@ -264,3 +264,71 @@ export async function updateOfferingStatus(id, isActive) {
 
   return result.rows[0] || null;
 }
+
+
+export async function searchPublicAnganwadiOfferings(filters = {}) {
+  const conditions = ["av.is_active = TRUE"];
+  const params = [];
+
+  // IMPORTANT: For Anganwadis, slot_date is REQUIRED
+  // If no date is provided, return empty results
+  if (!filters.slotDate) {
+    return [];
+  }
+
+  params.push(filters.slotDate);
+  conditions.push(`ats.slot_date = $${params.length}`);
+
+  if (filters.city) {
+    params.push(`%${filters.city}%`);
+    conditions.push(`a.city ILIKE $${params.length}`);
+  }
+
+  if (filters.pincode) {
+    params.push(filters.pincode);
+    conditions.push(`a.pincode = $${params.length}`);
+  }
+
+  if (filters.vaccineId) {
+    params.push(filters.vaccineId);
+    conditions.push(`v.id = $${params.length}`);
+  }
+
+  if (filters.slotDate) {
+    params.push(filters.slotDate);
+    conditions.push(`ats.slot_date = $${params.length}`);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const result = await pool.query(
+    `
+      SELECT DISTINCT
+        a.id,
+        a.name,
+        a.city,
+        a.pincode,
+        a.address,
+        a.created_at,
+        a.updated_at,
+        av.id AS offering_id,
+        av.is_active,
+        av.price_inr,
+        av.created_at AS offering_created_at,
+        av.updated_at AS offering_updated_at,
+        v.id AS vaccine_id,
+        v.name AS vaccine_name,
+        v.description AS vaccine_description,
+        v.doses_required
+      FROM anganwadis a
+      INNER JOIN anganwadi_vaccines av ON av.anganwadi_id = a.id
+      INNER JOIN vaccines v ON v.id = av.vaccine_id
+      INNER JOIN anganwadi_time_slots ats ON ats.anganwadi_vaccine_id = av.id
+      ${whereClause}
+      ORDER BY a.name ASC, v.name ASC
+    `,
+    params
+  );
+
+  return result.rows;
+}
