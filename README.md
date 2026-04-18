@@ -1,39 +1,51 @@
 # Hospital Vaccine Search & Slot Booking System
 
-A full-stack web application for vaccine slot booking with hospital management capabilities.
+A simplified JS-only monorepo for the hackathon app.
 
-## Project Structure
+## Tech Stack
 
-```
+- `apps/web`: React + Vite + Tailwind CSS + shadcn-style UI components
+- `apps/api`: Express + PostgreSQL + JWT auth
+
+## Structure
+
+```text
 /apps
-  /web          - Frontend application (React + shadcn/ui)
-  /api          - Backend application (Node.js/Express)
-/packages
-  /contracts    - Shared API contracts and DTOs
-  /ui           - Shared UI components (shadcn/ui wrappers)
-  /config       - Shared configuration
-  /types        - Shared TypeScript types
-  /utils        - Shared utilities
+  /web
+  /api
 /docs
-  /architecture - Architecture documentation
-  /api          - API documentation
-  /db           - Database documentation
+  /architecture
+  /api
+  /db
 ```
 
-## Architecture Principles
+## Current Phase
 
-- **Loose Coupling**: Frontend, backend, and database are independently replaceable
-- **Modular Structure**: Feature-based organization with clear boundaries
-- **Phase-Based Delivery**: Incremental development with stable contracts
-- **Consistent Design**: shadcn/ui-based component system
+The repository now covers the initial product phase:
 
-## Getting Started
+- foundation setup
+- real authentication
+- role-aware app entry for `patient` and `admin`
+- PostgreSQL-ready backend structure
 
-See individual app READMEs for setup instructions:
-- [Frontend Setup](./apps/web/README.md)
-- [Backend Setup](./apps/api/README.md)
+## Commands
 
-## Documentation
+```bash
+npm install
+npm run migrate:api
+npm run dev
+```
 
-- [Problem Statement](./ProblemStatement.md)
-- [Implementation Plan](./agent_plan.md)
+## App Roles
+
+- `patient`: search, compare, and manage bookings
+- `admin`: manage hospitals, pricing, daily capacity, and bookings
+
+## Next Functional Phase
+
+After auth, the next build slice should be:
+
+1. hospital and vaccine master data
+2. price and time-slot setup
+3. hospital search and availability
+4. booking flow

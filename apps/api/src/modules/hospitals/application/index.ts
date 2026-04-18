@@ -1,1 +1,0 @@
-// Hospitals application layer exports

@@ -1,9 +1,19 @@
 {
-  "name": "vaccine-booking-system",
+  "name": "hospital-vaccine-booking",
   "version": "0.1.0",
   "private": true,
   "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:web": "npm run dev --workspace @hospital-vaccine/web",
+    "dev:api": "npm run dev --workspace @hospital-vaccine/api",
+    "build:web": "npm run build --workspace @hospital-vaccine/web",
+    "migrate:api": "npm run db:migrate --workspace @hospital-vaccine/api",
+    "seed:api": "npm run db:seed --workspace @hospital-vaccine/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
 }

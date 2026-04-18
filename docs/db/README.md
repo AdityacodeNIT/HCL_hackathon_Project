@@ -1,11 +1,25 @@
-# Database Documentation
+# Database Notes
 
-This directory contains database schema documentation, migration guides, and data modeling decisions.
+## Current Table
 
-## Contents
+- `users`
 
-- Entity relationship diagrams
-- Schema definitions
-- Migration strategy
-- Indexing strategy
-- Seed data documentation
+## Current User Fields
+
+- `id`
+- `full_name`
+- `email`
+- `password_hash`
+- `role`
+- `created_at`
+- `updated_at`
+
+## Next Tables To Add
+
+- `hospitals`
+- `vaccines`
+- `hospital_vaccines`
+- `time_slots`
+- `bookings`
+
+The next schema phase should model actual bookable time slots, not only date-level counts.

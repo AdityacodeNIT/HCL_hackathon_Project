@@ -1,33 +1,24 @@
-# Backend API Application
+# API App
 
-Node.js/Express backend following clean architecture principles.
+Express API with PostgreSQL-backed authentication.
 
-## Structure
+## Backend Structure
 
-```
+```text
 /src
-  /modules          - Feature modules
-    /{module}
-      /domain       - Entities, rules, policies
-      /application  - Use cases, services
-      /infrastructure - ORM, repositories, adapters
-      /presentation - Routes, controllers
-  /shared           - Shared utilities
-  /infrastructure   - Cross-cutting infrastructure
-  /interfaces       - Interface definitions
+  /config
+  /db
+  /middleware
+  /modules
+    /auth
+    /health
+  /utils
 ```
 
-## Modules
+## Current Scope
 
-- **auth**: Authentication and authorization
-- **hospitals**: Hospital management
-- **vaccines**: Vaccine catalog
-- **pricing**: Hospital-vaccine pricing
-- **availability**: Daily slot capacity
-- **bookings**: Booking management
-- **search**: Hospital search and filtering
-- **admin**: Admin operations
-
-## Setup
-
-Instructions coming soon.
+- health route
+- user registration
+- user login
+- current-user lookup
+- role-based auth middleware
