@@ -389,7 +389,12 @@ export async function listMyBookings(userId, db = pool) {
         v.id AS vaccine_id,
         v.name AS vaccine_name,
         v.description AS vaccine_description,
-        v.doses_required
+        v.doses_required,
+        CASE 
+          WHEN ts.slot_date < CURRENT_DATE THEN 'past'
+          WHEN ts.slot_date = CURRENT_DATE THEN 'today'
+          ELSE 'upcoming'
+        END AS booking_period
       FROM bookings b
       INNER JOIN time_slots ts ON ts.id = b.time_slot_id
       INNER JOIN hospital_vaccines hv ON hv.id = b.hospital_vaccine_id
@@ -398,8 +403,8 @@ export async function listMyBookings(userId, db = pool) {
       WHERE b.user_id = $1
       ORDER BY
         CASE WHEN b.status = 'booked' THEN 0 ELSE 1 END,
-        ts.slot_date ASC,
-        ts.start_time ASC
+        ts.slot_date DESC,
+        ts.start_time DESC
     `,
     [userId]
   );

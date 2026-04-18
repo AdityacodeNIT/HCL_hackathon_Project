@@ -8,18 +8,18 @@ import { getDefaultPathForRole } from "@/lib/utils.js";
 
 const highlights = [
   {
-    title: "Find nearby hospitals",
-    description: "Search by city, pincode, and vaccine type without jumping across systems.",
+    title: "Real-Time Availability",
+    description: "View live vaccine slot availability across hospitals and vaccination centers.",
     icon: MapPinned,
   },
   {
-    title: "Compare real slot choices",
-    description: "Move beyond date-only counts and prepare for actual time-slot booking flows.",
+    title: "Trusted Hospitals",
+    description: "Browse verified hospitals and vaccination centers with transparent pricing.",
     icon: CalendarRange,
   },
   {
-    title: "Manage operations cleanly",
-    description: "Admins can update hospitals, pricing, capacity, and booking visibility from one shell.",
+    title: "Easy Booking",
+    description: "Book your vaccine slot in just a few clicks with instant confirmation.",
     icon: ShieldPlus,
   },
 ];
@@ -48,10 +48,10 @@ export default function HomePage() {
             ) : (
               <>
                 <Link to="/login">
-                  <Button variant="outline">Login</Button>
+                  <Button variant="outline">View My Bookings</Button>
                 </Link>
                 <Link to="/register">
-                  <Button>Get started</Button>
+                  <Button>Check Availability</Button>
                 </Link>
               </>
             )}
@@ -62,27 +62,25 @@ export default function HomePage() {
       <main className="container py-10">
         <section className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
           <div className="space-y-6">
-            <Badge>Initial phase delivered</Badge>
+            <Badge>Trusted by Patients & Hospitals</Badge>
             <div className="space-y-4">
               <h2 className="max-w-3xl text-5xl font-extrabold leading-tight tracking-tight text-foreground">
-                JS-only structure, real auth, and clean role entry for the first working slice.
+                Find, Compare, and Book Vaccine Appointments Easily
               </h2>
               <p className="max-w-2xl text-base leading-8 text-muted-foreground">
-                The repo is now split into a lean Vite frontend and a lean Express API. Patients
-                and admins each get a proper entry path, and the team can extend search, slots, and
-                bookings without pulling business logic into the UI.
+                Search nearby hospitals, check real-time vaccine availability, compare prices, and secure your appointment in seconds. Trusted by patients and healthcare providers across the region.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Link to="/register">
                 <Button size="lg">
-                  Create an account
+                  Book a Vaccine Slot
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
               <Link to="/login">
                 <Button size="lg" variant="outline">
-                  Sign in
+                  View My Bookings
                 </Button>
               </Link>
             </div>
@@ -90,29 +88,29 @@ export default function HomePage() {
 
           <Card className="overflow-hidden border-none bg-slate-950 text-slate-50">
             <CardHeader className="space-y-4">
-              <Badge className="bg-white/10 text-white">Team-friendly repo</Badge>
-              <CardTitle className="text-3xl">What this reset fixes</CardTitle>
+              <Badge className="bg-white/10 text-white">Healthcare Platform</Badge>
+              <CardTitle className="text-3xl">Why Choose DevNexus</CardTitle>
               <CardDescription className="text-slate-300">
-                No TypeScript sprawl, no dead package layer, and no hollow architecture folders.
+                Your trusted partner for safe and convenient vaccine booking.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-sm font-semibold text-white">Frontend owner</p>
+                <p className="text-sm font-semibold text-white">Real-Time Availability</p>
                 <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Works entirely inside `apps/web` with stable auth endpoints.
+                  View live vaccine slot availability across hospitals and vaccination centers.
                 </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-sm font-semibold text-white">Backend owner</p>
+                <p className="text-sm font-semibold text-white">Trusted Hospitals</p>
                 <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Builds route, service, and repo files module by module without framework clutter.
+                  Browse verified hospitals and vaccination centers with transparent pricing.
                 </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-sm font-semibold text-white">Database owner</p>
+                <p className="text-sm font-semibold text-white">Easy Booking</p>
                 <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Owns PostgreSQL migrations, seed data, and future slot and booking queries.
+                  Book your vaccine slot in just a few clicks with instant confirmation.
                 </p>
               </div>
             </CardContent>

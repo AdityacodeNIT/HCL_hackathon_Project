@@ -55,6 +55,7 @@ function mapBooking(row) {
     status: row.status,
     confirmationCode: row.confirmation_code,
     lockedPriceInr: row.locked_price_inr,
+    bookingPeriod: row.booking_period || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     user: row.full_name

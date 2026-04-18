@@ -350,22 +350,26 @@ export default function PatientDashboardPage() {
         <Card>
           <CardContent className="flex items-center gap-4 p-5">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <WalletCards className="h-5 w-5" />
+              <CalendarDays className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">My bookings</p>
-              <p className="mt-1 text-3xl font-extrabold tracking-tight text-foreground">{myBookings.length}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Upcoming</p>
+              <p className="mt-1 text-3xl font-extrabold tracking-tight text-foreground">
+                {myBookings.filter((b) => (b.bookingPeriod === 'upcoming' || b.bookingPeriod === 'today') && b.status === 'booked').length}
+              </p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="flex items-center gap-4 p-5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <CalendarDays className="h-5 w-5" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-500/10 text-green-600">
+              <WalletCards className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Date selected</p>
-              <p className="mt-1 text-lg font-extrabold tracking-tight text-foreground">{formatDateLabel(availabilityDate)}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Completed</p>
+              <p className="mt-1 text-3xl font-extrabold tracking-tight text-foreground">
+                {myBookings.filter((b) => b.bookingPeriod === 'past' && b.status === 'booked').length}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -638,13 +642,32 @@ export default function PatientDashboardPage() {
               <CardTitle>Manage appointments</CardTitle>
               <CardDescription>Review booked or cancelled slots, reschedule upcoming ones, or cancel if needed.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               {isBookingsLoading ? (
                 <p className="text-sm text-muted-foreground">Loading your bookings...</p>
               ) : myBookings.length === 0 ? (
                 <p className="text-sm text-muted-foreground">You have no bookings yet.</p>
               ) : (
-                myBookings.map((booking) => {
+                <>
+                  {(() => {
+                    const upcomingBookings = myBookings.filter(
+                      (b) => (b.bookingPeriod === 'upcoming' || b.bookingPeriod === 'today') && b.status === 'booked'
+                    );
+                    const pastBookings = myBookings.filter(
+                      (b) => b.bookingPeriod === 'past' || b.status === 'cancelled'
+                    );
+
+                    return (
+                      <>
+                        {upcomingBookings.length > 0 && (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <CalendarDays className="h-4 w-4 text-primary" />
+                              <h3 className="font-semibold text-foreground">Upcoming Appointments</h3>
+                              <Badge variant="default">{upcomingBookings.length}</Badge>
+                            </div>
+                            <div className="space-y-4">
+                              {upcomingBookings.map((booking) => {
                   const reschedule = rescheduleState[booking.id];
 
                   return (
@@ -741,7 +764,56 @@ export default function PatientDashboardPage() {
                       ) : null}
                     </div>
                   );
-                })
+                })}
+                            </div>
+                          </div>
+                        )}
+
+                        {pastBookings.length > 0 && (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Syringe className="h-4 w-4 text-muted-foreground" />
+                              <h3 className="font-semibold text-foreground">Vaccination History</h3>
+                              <Badge variant="secondary">{pastBookings.length}</Badge>
+                            </div>
+                            <div className="space-y-4">
+                              {pastBookings.map((booking) => (
+                                <div key={booking.id} className="rounded-2xl border border-border bg-muted/30 p-4 opacity-75">
+                                  <div className="flex flex-col gap-3">
+                                    <div>
+                                      <div className="flex flex-wrap items-center gap-3">
+                                        <p className="font-semibold text-foreground">{booking.hospital.name}</p>
+                                        <Badge variant={booking.status === "booked" ? "default" : "secondary"}>
+                                          {booking.status}
+                                        </Badge>
+                                        {booking.bookingPeriod === 'past' && booking.status === 'booked' && (
+                                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                            Completed
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <p className="mt-1 text-sm text-muted-foreground">{booking.vaccine.name}</p>
+                                      <p className="mt-2 text-sm text-muted-foreground">
+                                        {formatDateLabel(booking.slot.date)} | {formatTimeLabel(booking.slot.startTime)} -{" "}
+                                        {formatTimeLabel(booking.slot.endTime)}
+                                      </p>
+                                      <p className="mt-1 text-sm font-semibold text-foreground">
+                                        {formatCurrencyInr(booking.lockedPriceInr)}
+                                      </p>
+                                      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                                        {booking.confirmationCode}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </>
               )}
             </CardContent>
           </Card>
