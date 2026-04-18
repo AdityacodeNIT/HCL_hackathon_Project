@@ -22,3 +22,6 @@ Express API with PostgreSQL-backed authentication.
 - user login
 - current-user lookup
 - role-based auth middleware
+- hospital CRUD for admins
+- vaccine catalog creation and listing
+- hospital-vaccine offering assignment

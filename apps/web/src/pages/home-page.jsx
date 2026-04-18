@@ -32,7 +32,7 @@ export default function HomePage() {
       <header className="border-b border-border/70 bg-background/85 backdrop-blur">
         <div className="container flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">VaxBook</p>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">DevNexus</p>
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
               Hospital vaccine booking, kept simple.
             </h1>

@@ -1,7 +1,10 @@
-import { CalendarDays, Search, WalletCards } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarDays, Search, Syringe, WalletCards } from "lucide-react";
 import AppShell from "@/components/app-shell.jsx";
+import { Alert } from "@/components/ui/alert.jsx";
 import { Badge } from "@/components/ui/badge.jsx";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.jsx";
+import * as catalogService from "@/services/catalog-service.js";
 
 const patientSteps = [
   {
@@ -22,10 +25,37 @@ const patientSteps = [
 ];
 
 export default function PatientDashboardPage() {
+  const [vaccines, setVaccines] = useState([]);
+  const [catalogError, setCatalogError] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadVaccines() {
+      try {
+        const data = await catalogService.getPublicVaccines();
+
+        if (isMounted) {
+          setVaccines(data);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setCatalogError(error.message);
+        }
+      }
+    }
+
+    loadVaccines();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <AppShell
       title="Patient Dashboard"
-      description="This first slice gets the patient authenticated and inside a stable app shell. Search, slot viewing, and booking flows should plug into this route next."
+      description="Patients now have a stable authenticated shell, and the vaccine catalog phase is visible here while search, availability, and booking flows are built next."
     >
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <Card>
@@ -61,16 +91,37 @@ export default function PatientDashboardPage() {
 
         <Card className="bg-slate-950 text-slate-50">
           <CardHeader>
-            <Badge className="bg-white/10 text-white">Suggested next build</Badge>
-            <CardTitle className="text-2xl">Patient flow contract</CardTitle>
+            <Badge className="bg-white/10 text-white">Catalog preview</Badge>
+            <CardTitle className="text-2xl">Available vaccine types</CardTitle>
             <CardDescription className="text-slate-300">
-              Keep the frontend thin. Let the API own pricing, slot availability, and booking rules.
+              This list comes from the shared vaccine catalog managed by admins.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-7 text-slate-200">
-            <p>1. Search hospitals and offerings through one filter endpoint.</p>
-            <p>2. Show hospital pricing and time-slot availability together.</p>
-            <p>3. Confirm bookings only after the backend locks the price and slot.</p>
+            {catalogError ? <Alert variant="destructive">{catalogError}</Alert> : null}
+            {vaccines.length === 0 ? (
+              <p>No vaccines have been added yet. Once admins seed the catalog, patients will see them here.</p>
+            ) : (
+              vaccines.map((vaccine) => (
+                <div
+                  key={vaccine.id}
+                  className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"
+                >
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white">
+                    <Syringe className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-white">{vaccine.name}</p>
+                    <p className="mt-1 text-sm text-slate-300">
+                      {vaccine.description || "Description will be added by admin."}
+                    </p>
+                    <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                      {vaccine.dosesRequired} dose{vaccine.dosesRequired > 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>

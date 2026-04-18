@@ -23,7 +23,7 @@ export default function AppShell({ title, description, children }) {
                 {user.role === "admin" ? <ShieldCheck className="h-5 w-5" /> : <UserRound className="h-5 w-5" />}
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">VaxBook</p>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">DevNexus</p>
                 <h1 className="text-2xl font-extrabold tracking-tight text-foreground">{title}</h1>
               </div>
             </div>

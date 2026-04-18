@@ -21,11 +21,12 @@ A simplified JS-only monorepo for the hackathon app.
 
 ## Current Phase
 
-The repository now covers the initial product phase:
+The repository now covers:
 
 - foundation setup
 - real authentication
 - role-aware app entry for `patient` and `admin`
+- hospital and vaccine master data management
 - PostgreSQL-ready backend structure
 
 ## Commands
@@ -43,9 +44,9 @@ npm run dev
 
 ## Next Functional Phase
 
-After auth, the next build slice should be:
+The next build slice should be:
 
-1. hospital and vaccine master data
-2. price and time-slot setup
-3. hospital search and availability
+1. price setup per hospital-vaccine offering
+2. actual time-slot creation and capacity management
+3. patient search and availability browsing
 4. booking flow

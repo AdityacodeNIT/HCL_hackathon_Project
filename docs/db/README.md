@@ -1,24 +1,14 @@
 # Database Notes
 
-## Current Table
+## Current Tables
 
 - `users`
-
-## Current User Fields
-
-- `id`
-- `full_name`
-- `email`
-- `password_hash`
-- `role`
-- `created_at`
-- `updated_at`
-
-## Next Tables To Add
-
 - `hospitals`
 - `vaccines`
 - `hospital_vaccines`
+
+## Next Tables To Add
+
 - `time_slots`
 - `bookings`
 
