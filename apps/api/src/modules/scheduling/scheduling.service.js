@@ -16,10 +16,23 @@ function getTodayInIndia() {
 }
 
 function mapSlot(row) {
+  // Extract date in YYYY-MM-DD format without timezone conversion
+  let dateStr = null;
+  if (row.slot_date) {
+    if (typeof row.slot_date === 'string') {
+      dateStr = row.slot_date.split('T')[0];
+    } else if (row.slot_date instanceof Date) {
+      const year = row.slot_date.getFullYear();
+      const month = String(row.slot_date.getMonth() + 1).padStart(2, '0');
+      const day = String(row.slot_date.getDate()).padStart(2, '0');
+      dateStr = `${year}-${month}-${day}`;
+    }
+  }
+
   return {
     id: row.id || row.slot_id,
     offeringId: row.hospital_vaccine_id || row.offering_id,
-    date: row.slot_date,
+    date: dateStr,
     startTime: String(row.start_time).slice(0, 5),
     endTime: String(row.end_time).slice(0, 5),
     capacity: row.capacity,
@@ -84,7 +97,12 @@ function mapBooking(row) {
     },
     slot: {
       id: row.time_slot_id,
-      date: row.slot_date,
+      date: row.slot_date ? (typeof row.slot_date === 'string' ? row.slot_date.split('T')[0] : (() => {
+        const year = row.slot_date.getFullYear();
+        const month = String(row.slot_date.getMonth() + 1).padStart(2, '0');
+        const day = String(row.slot_date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      })()) : null,
       startTime: String(row.start_time).slice(0, 5),
       endTime: String(row.end_time).slice(0, 5),
       capacity: row.capacity,
