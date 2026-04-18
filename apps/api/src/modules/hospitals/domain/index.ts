@@ -1,0 +1,1 @@
+// Hospitals domain layer exports

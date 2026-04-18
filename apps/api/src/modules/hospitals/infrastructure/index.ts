@@ -1,0 +1,1 @@
+// Hospitals infrastructure layer exports
