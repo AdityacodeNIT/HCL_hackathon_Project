@@ -596,7 +596,7 @@ export default function PatientDashboardPage() {
           <Card className="bg-slate-950 text-slate-50">
             <CardHeader>
               <Badge className="bg-white/10 text-white">Patient flow</Badge>
-              <CardTitle className="text-2xl">What is now live</CardTitle>
+              <CardTitle className="text-2xl">What You Can Do</CardTitle>
               <CardDescription className="text-slate-300">
                 The patient side now supports real discovery, slot selection, and booking management.
               </CardDescription>
